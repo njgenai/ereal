@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<script src="https://cdn.jsdelivr.net/npm/web3@1.5.2/dist/web3.min.js"></script>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MetaMask Connection Page</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f3f4f6;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background-color: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    button {
+      background-color: #4CAF50;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: #45a049;
+    }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 10px;
+      margin: 5px 0;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+      box-sizing: border-box;
+    }
+
+    label {
+      font-weight: bold;
+      margin-top: 10px;
+      display: block;
+    }
+
+    #transactionStatus {
+      margin-top: 20px;
+      padding: 10px;
+      border-radius: 5px;
+    }
+
+    #transactionStatus.success {
+      background-color: #d4edda;
+      color: #155724;
+      border-color: #c3e6cb;
+    }
+
+    #transactionStatus.error {
+      background-color: #f8d7da;
+      color: #721c24;
+      border-color: #f5c6cb;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="container">
+    <h1>Ethereal Testing Method</h1>
+    <center>
+      <button id='connectMetamaskWallet' onclick="WalletConnect()"><b>Connect Metamask Wallet</b></button>
+      <p id="walletAddrText">Not Connected</p>
+
+      <button id='getAccountBalance' onclick="checkTokenBalance()"><b>Get Balance of Token</b></button>
+      <p id="tokenBalanceText"></p>
+
+      <label for="recipientAddress">Recipient Address:</label><br>
+      <input type="text" id="recipientAddress" name="recipientAddress"><br>
+      <label for="amount">Amount (Tokens):</label><br>
+      <input type="text" id="amount" name="amount"><br>
+      <button onclick="sendTokenTransaction()"><b>Send Transaction</b></button>
+
+      <div id="transactionStatus"></div>
+    </center>
+  </div>
+
+  <script>
+    const tokenAddress = '0xB9De61f3D4afe6bF19eb5E108dC8DBE35Cd75818';
+    async function WalletConnect() {
+      console.log("here");
+      if (typeof window.ethereum !== "undefined") {
+        const walletAddr = await ethereum.request({method: "eth_requestAccounts"});
+        console.log(walletAddr);
+        console.log("Metamask is installed");
+
+        document.getElementById("walletAddrText").innerHTML = walletAddr;
+
+      } else {
+        console.log("Metamask is not installed");
+      }
+    }
+
+    async function checkTokenBalance() {
+
+      const walletAddr = document.getElementById("walletAddrText").innerText;
+
+      const contractABI = [{
+        "constant": true,
+        "inputs": [{
+          "name": "_owner",
+          "type": "address"
+        }],
+        "name": "balanceOf",
+        "outputs": [{
+          "name": "balance",
+          "type": "uint256"
+        }],
+        "payable": false,
+        "stateMutability": "view",
+        "type": "function"
+      }];
+
+      const web3 = new Web3(window.ethereum);
+      const contract = new web3.eth.Contract(contractABI, tokenAddress);
+
+      try {
+        const balance = await contract.methods.balanceOf(walletAddr).call();
+        document.getElementById("tokenBalanceText").innerText = balance;
+      } catch (error) {
+        console.error("Error fetching token balance:", error);
+      }
+    }
+
+
+    async function sendTokenTransaction() {
+      const recipientAddress = document.getElementById("recipientAddress").value;
+      const amount = document.getElementById("amount").value;
+
+      try {
+        const accounts = await ethereum.request({method: 'eth_accounts'});
+        if (accounts.length === 0) {
+          throw new Error('No accounts found. Please connect MetaMask.');
+        }
+        const from = accounts[0]; // Use the first account returned by MetaMask
+
+        // Constructing the data field for the transfer function of an ERC20 token
+        // Function signature: 0xa9059cbb
+        const functionSignature = '0xa9059cbb';
+
+        // Encode recipient address (address parameter)
+        const encodedRecipientAddress = recipientAddress.toLowerCase().replace('0x', '').padStart(64, '0');
+
+        // Encode amount (uint256 parameter)
+        const encodedAmount = (amount * Math.pow(10, 18)).toString(16).padStart(64, '0');
+
+        // Concatenate function signature and encoded parameters
+        const data = functionSignature + encodedRecipientAddress + encodedAmount;
+
+        // Set gas limit (example: 300000)
+        const gasLimit = '0x4C4B40'; // Convert decimal to hex
+
+        // Send ERC20 token transfer transaction with gas limit
+        const txHash = await ethereum.request({
+          method: 'eth_sendTransaction',
+          params: [
+            {
+              from: from,
+              to: tokenAddress, // Contract address of the ERC20 token
+              value: '0x00', // Value is 0 for token transfer
+              data: data,
+              gas: gasLimit  // Set gas limit here
+            }
+          ]
+        });
+        console.log('Transaction sent:', txHash);
+        document.getElementById("transactionStatus").className = 'success';
+        document.getElementById("transactionStatus").innerText = 'Transaction sent! Transaction hash: ' + txHash;
+      } catch (error) {
+        console.error('Error sending transaction:', error);
+        document.getElementById("transactionStatus").className = 'error';
+        document.getElementById("transactionStatus").innerText = 'Error sending transaction: ' + error.message;
+      }
+    }
+  </script>
+</body>
+
+</html>
