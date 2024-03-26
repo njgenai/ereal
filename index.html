@@ -91,6 +91,7 @@
       <label for="amount">Amount (Tokens):</label><br>
       <input type="text" id="amount" name="amount"><br>
       <button onclick="sendTokenTransaction()"><b>Send Transaction</b></button>
+      <button onclick="refreshTransactionStatus()"><b>Refresh Transaction Status</b></button>
 
       <div id="transactionStatus"></div>
     </center>
@@ -187,12 +188,53 @@
         console.log('Transaction sent:', txHash);
         document.getElementById("transactionStatus").className = 'success';
         document.getElementById("transactionStatus").innerText = 'Transaction sent! Transaction hash: ' + txHash;
+
+        // Start checking transaction status
+        transactionInterval = setInterval(() => {
+          checkTransactionStatus(txHash);
+        }, 3000); // Check status every 3 seconds
+
       } catch (error) {
         console.error('Error sending transaction:', error);
         document.getElementById("transactionStatus").className = 'error';
         document.getElementById("transactionStatus").innerText = 'Error sending transaction: ' + error.message;
       }
     }
+
+    async function checkTransactionStatus(txHash) {
+      try {
+        const receipt = await ethereum.request({
+          method: 'eth_getTransactionReceipt',
+          params: [txHash]
+        });
+
+        if (receipt && receipt.blockNumber) {
+          clearInterval(transactionInterval); // Stop checking
+          document.getElementById("transactionStatus").className = 'success';
+          document.getElementById("transactionStatus").innerText = 'Transaction confirmed! ' + txHash + ' Status: ' + (receipt.status ? 'Success' : 'Failed');
+        } else {
+          console.log('Transaction is pending...');
+          document.getElementById("transactionStatus").className = '';
+          document.getElementById("transactionStatus").innerText = 'Transaction is pending...' + txHash + ' Status: ' + (receipt.status ? 'Success' : 'Failed');
+        }
+      } catch (error) {
+        console.error('Error checking transaction status:', error);
+        document.getElementById("transactionStatus").className = 'error';
+        document.getElementById("transactionStatus").innerText = 'Transaction : ' + txHash + ' Status: ' + (receipt.status ? 'Success' : 'Failed') + ' Error checking transaction status: ' + error.message;
+      }
+    }
+
+
+    function refreshTransactionStatus() {
+      const txHash = document.getElementById("transactionStatus").innerText.split(':')[1].trim(); // Extract transaction hash
+      if (txHash) {
+        checkTransactionStatus(txHash);
+      } else {
+        console.error('Transaction hash not found.');
+      }
+    }
+
+
   </script>
 </body>
 
