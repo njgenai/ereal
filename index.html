@@ -86,6 +86,10 @@
       <button id='getAccountBalance' onclick="checkTokenBalance()"><b>Get Balance of Token</b></button>
       <p id="tokenBalanceText"></p>
 
+      <button id='getOwner' onclick="getContractOwner()"><b>Get Owner</b></button>
+      <p id="contractOwnerText"></p>
+      <p id="isConnectWalletOwner"></p>
+
       <label for="recipientAddress">Recipient Address:</label><br>
       <input type="text" id="recipientAddress" name="recipientAddress"><br>
       <label for="amount">Amount (Tokens):</label><br>
@@ -98,7 +102,7 @@
   </div>
 
   <script>
-    const tokenAddress = '0xB9De61f3D4afe6bF19eb5E108dC8DBE35Cd75818';
+    const tokenAddress = '0x11Ad8bBCf33708721c0F1F8D084993031A9b1bC7';
     async function WalletConnect() {
       console.log("here");
       if (typeof window.ethereum !== "undefined") {
@@ -143,6 +147,60 @@
         console.error("Error fetching token balance:", error);
       }
     }
+
+
+    // Get contract owner
+    async function getContractOwner() {
+
+      // Contract ABI (replace with your actual ABI)
+      const contractABI = [
+        // Include the ABI of the getOwner function
+        {
+          "constant": true,
+          "inputs": [],
+          "name": "getContractOwner",
+          "outputs": [
+            {
+              "internalType": "address",
+              "name": "",
+              "type": "address"
+            }
+          ],
+          "stateMutability": "view",
+          "type": "function"
+        }
+      ];
+
+      const web3 = new Web3(window.ethereum);
+      const contract = new web3.eth.Contract(contractABI, tokenAddress);
+      const walletAddr = document.getElementById("walletAddrText").innerText;
+
+      try {
+        const ownerAddress = await contract.methods.getContractOwner().call();
+        console.log("Owner address:", ownerAddress);  // Directly log the owner address
+        document.getElementById("contractOwnerText").innerText = ownerAddress;
+
+        // Get connected wallet address
+        const accounts = await ethereum.request({ method: 'eth_accounts' });
+        const connectedWalletAddress = accounts[0];
+
+        if (walletAddr.trim().toLowerCase() == ownerAddress.trim().toLowerCase()) {
+          console.log("Connected wallet is the owner!");
+          document.getElementById("contractOwnerText").innerText = connectedWalletAddress + " (You are the owner)";
+        } else {
+          console.log(walletAddr);
+          console.log(ownerAddress);
+          console.log("Connected wallet is not the owner.");
+          document.getElementById("contractOwnerText").innerText = connectedWalletAddress + " (Not you)";
+        }
+      } catch (error) {
+        console.error("Error fetching owner address:", error);
+      }
+      
+    }
+
+
+
 
 
     async function sendTokenTransaction() {
